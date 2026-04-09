@@ -1,0 +1,1074 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Penilaian Perbualan IGCSE Universal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- TAMBAH LIBRARY HTML2PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; color: #1e293b; }
+        .glass-card { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); border: 1px solid rgba(226, 232, 240, 0.8); }
+        .chat-window { height: 450px; overflow-y: auto; scroll-behavior: smooth; }
+        .chat-window::-webkit-scrollbar { width: 6px; }
+        .chat-window::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
+        .bot-bubble { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 0 1.25rem 1.25rem 1.25rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
+        .user-bubble { background: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%); color: white; border-radius: 1.25rem 1.25rem 0 1.25rem; box-shadow: 0 4px 10px rgba(79, 70, 229, 0.3); }
+        .recording-pulse { animation: pulse-red 1.5s infinite; }
+        @keyframes pulse-red { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { transform: scale(1.05); box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); } 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
+        .speaking-pulse { animation: pulse-indigo 1.5s infinite; }
+        @keyframes pulse-indigo { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.7); } 70% { transform: scale(1.05); box-shadow: 0 0 0 15px rgba(99, 102, 241, 0); } 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); } }
+        .loading-dots span { animation: blink 1.4s infinite both; height: 6px; width: 6px; background: #6366f1; border-radius: 50%; display: inline-block; margin: 0 2px; }
+        .loading-dots span:nth-child(2) { animation-delay: 0.2s; } .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes blink { 0% { opacity: 0.2; } 20% { opacity: 1; } 100% { opacity: 0.2; } }
+        .toggle-checkbox:checked { right: 0; border-color: #68D391; } .toggle-checkbox:checked + .toggle-label { background-color: #68D391; }
+    </style>
+</head>
+<body class="min-h-screen bg-slate-50 relative">
+
+    <!-- Butang Portal Guru -->
+    <div class="fixed top-4 right-4 z-[50]">
+        <button onclick="window.openAdminPortal()" class="flex items-center space-x-2 bg-white/80 hover:bg-white backdrop-blur border border-slate-300 text-slate-600 hover:text-indigo-600 px-4 py-2 rounded-full text-xs font-bold transition-all shadow-lg active:scale-95">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+            <span>Portal Guru</span>
+        </button>
+    </div>
+
+    <!-- MODAL LOG MASUK & DAFTAR -->
+    <div id="pin-modal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[99999] flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl transform transition-all relative overflow-hidden">
+            <div class="w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center mb-4 text-indigo-600">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+            </div>
+            <h3 class="text-xl font-extrabold text-slate-800 mb-4">Akses Portal Guru</h3>
+
+            <div class="flex mb-6 bg-slate-100 p-1 rounded-xl">
+                <button id="tab-btn-login" onclick="window.switchAuthTab('login')" class="w-1/2 py-2 text-sm font-bold rounded-lg bg-white shadow-sm text-indigo-600 transition-all">Log Masuk</button>
+                <button id="tab-btn-register" onclick="window.switchAuthTab('register')" class="w-1/2 py-2 text-sm font-bold rounded-lg text-slate-500 hover:text-slate-700 transition-all">Daftar</button>
+            </div>
+
+            <!-- Form Log Masuk -->
+            <div id="form-login" class="space-y-4">
+                <p class="text-xs text-slate-500 mb-4 font-medium leading-relaxed">Masukkan <b>Kod Kelas</b> dan <b>Kata Laluan</b> anda.</p>
+                <input type="text" id="login-code" placeholder="Kod Kelas (Cth: IGCSE-1234)" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none transition-all uppercase">
+                <input type="password" id="login-pass" placeholder="Kata Laluan" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none transition-all">
+                <div class="flex space-x-3 pt-2">
+                    <button onclick="window.closePinModal()" class="w-1/2 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-all active:scale-95 text-sm">Batal</button>
+                    <button onclick="window.processLogin()" class="w-1/2 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition-all shadow-lg shadow-indigo-200 active:scale-95 text-sm">Log Masuk</button>
+                </div>
+            </div>
+
+            <!-- Form Daftar -->
+            <div id="form-register" class="hidden space-y-4">
+                <p class="text-xs text-slate-500 mb-4 font-medium leading-relaxed">Daftar untuk mendapatkan <b>Kod Kelas</b> unik bagi pelajar anda.</p>
+                <input type="text" id="reg-name" placeholder="Nama Penuh (Cth: Cikgu Izan)" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none transition-all">
+                <input type="password" id="reg-pass" placeholder="Cipta Kata Laluan" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none transition-all">
+                <div class="flex space-x-3 pt-2">
+                    <button onclick="window.closePinModal()" class="w-1/2 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-all active:scale-95 text-sm">Batal</button>
+                    <button onclick="window.processRegister()" class="w-1/2 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition-all shadow-lg shadow-emerald-200 active:scale-95 text-sm">Daftar & Jana Kod</button>
+                </div>
+            </div>
+
+            <p id="auth-error" class="text-rose-500 text-xs font-bold text-center mt-4 hidden animate-pulse">❌ Mesej Ralat</p>
+            <p id="auth-success" class="text-emerald-600 text-xs font-bold text-center mt-4 hidden">✅ Berjaya!</p>
+        </div>
+    </div>
+
+    <!-- MODAL TUKAR KATA LALUAN -->
+    <div id="password-modal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[99999] flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl transform transition-all">
+            <h3 class="text-xl font-extrabold text-slate-800 mb-2">Tukar Kata Laluan</h3>
+            <p class="text-xs text-slate-500 mb-6 font-medium leading-relaxed" id="password-modal-desc">Masukkan kata laluan baharu untuk guru ini.</p>
+            <input type="text" id="new-password-input" placeholder="Kata Laluan Baharu" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl mb-4 text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none transition-all">
+            <input type="hidden" id="edit-teacher-id">
+            <div class="flex space-x-3">
+                <button onclick="window.closePasswordModal()" class="w-1/2 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-all active:scale-95 text-sm">Batal</button>
+                <button onclick="window.saveNewPassword()" class="w-1/2 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition-all shadow-lg active:scale-95 text-sm">Simpan</button>
+            </div>
+            <p id="password-status" class="text-emerald-600 text-xs font-bold text-center mt-4 hidden">✅ Disimpan!</p>
+        </div>
+    </div>
+
+    <!-- KANDUNGAN UTAMA (APP PELAJAR) -->
+    <div id="main-app-content" class="flex items-center justify-center p-4 min-h-screen">
+        <div class="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-12 gap-6 pt-10">
+            <!-- Sidebar -->
+            <div class="lg:col-span-4 space-y-6">
+                <div class="glass-card rounded-3xl p-6 shadow-xl border border-white">
+                    <div class="flex items-center space-x-3 mb-6">
+                        <div class="bg-indigo-600 p-2 rounded-xl text-white">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" /></svg>
+                        </div>
+                        <h2 class="text-xl font-extrabold text-slate-800 tracking-tight">Latihan Bertutur</h2>
+                    </div>
+
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Pilihan Ujian</label>
+                            <div class="grid grid-cols-2 gap-2 mb-2">
+                                <select id="lang-select" class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
+                                    <option value="Bahasa Melayu" selected>Melayu</option>
+                                    <option value="English">English</option>
+                                    <option value="Mandarin">Mandarin</option>
+                                </select>
+                                <select id="level-select" class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
+                                    <option value="Asas (Foundation)">Asas</option>
+                                    <option value="Pertengahan (Intermediate)" selected>Inter</option>
+                                    <option value="Lanjutan (Advanced)">Advanced</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Bilik Kelas</label>
+                            <div class="grid grid-cols-2 gap-2 mb-2">
+                                <select id="year-group" class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-slate-700">
+                                    <option value="" disabled selected>Pilih Tahun...</option>
+                                    <option value="Year 7">Year 7</option>
+                                    <option value="Year 8">Year 8</option>
+                                    <option value="Year 9">Year 9</option>
+                                    <option value="Year 10">Year 10</option>
+                                    <option value="Year 11">Year 11</option>
+                                </select>
+                                <input type="text" id="class-code" placeholder="Kod Kelas" class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-500 transition-all uppercase placeholder:normal-case">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Maklumat Pelajar</label>
+                            <input type="text" id="student-id" placeholder="Nama..." class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-500 mb-2">
+                            <input type="email" id="student-email" placeholder="E-mel..." class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Topik Perbualan</label>
+                            <input type="text" id="task-prompt" placeholder="Cth: Pengalaman percutian saya..." class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                        <div class="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">
+                            <label class="text-xs font-bold text-slate-500 uppercase tracking-widest cursor-pointer" for="tts-toggle">Suara Audio</label>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="tts-toggle" class="sr-only peer" checked>
+                                <div class="w-11 h-6 bg-slate-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                            </label>
+                        </div>
+                        <button id="start-btn" onclick="startConversation()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-2xl shadow-lg transition-all active:scale-95">Mula Ujian Lisan</button>
+                        
+                        <button id="end-assess-btn" onclick="endAndAssess()" disabled class="hidden w-full bg-rose-50 border border-rose-200 text-rose-600 font-bold py-3 rounded-2xl hover:bg-rose-100 transition-all disabled:opacity-50 mt-2">
+                            Tamatkan & Nilai Sekarang
+                        </button>
+                    </div>
+                </div>
+
+                <div id="status-card" class="glass-card rounded-2xl p-4 border-l-4 border-indigo-500 flex items-center space-x-3">
+                    <div id="status-indicator" class="h-3 w-3 rounded-full bg-slate-300"></div>
+                    <span id="status-text" class="text-xs font-bold text-slate-500 tracking-tight">Sistem Sedia.</span>
+                </div>
+            </div>
+
+            <!-- Chat Panel -->
+            <div class="lg:col-span-8 flex flex-col space-y-6">
+                <div class="glass-card rounded-3xl p-6 shadow-2xl flex-grow flex flex-col relative">
+                    <div id="turn-counter" class="hidden absolute top-4 right-6 bg-indigo-100 text-indigo-800 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest border border-indigo-200">
+                        Soalan: <span id="current-turn">0</span> / 7
+                    </div>
+
+                    <div id="chat-window" class="chat-window flex-grow flex flex-col space-y-6 p-2 mt-4">
+                        <div class="m-auto text-center space-y-4 max-w-sm">
+                            <div id="main-bot-avatar" class="bg-indigo-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 transition-all">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>
+                            </div>
+                            <h3 class="text-xl font-extrabold text-slate-800">Ujian Lisan IGCSE (7 Giliran)</h3>
+                            <p class="text-slate-500 text-sm font-medium">Anda akan diberikan 30 saat untuk berfikir (Think Time) sebelum menjawab.</p>
+                        </div>
+                    </div>
+
+                    <div id="voice-controls" class="hidden mt-6 pt-6 border-t border-slate-100">
+                        <button id="mic-btn" onclick="toggleRecording()" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white py-5 rounded-3xl font-extrabold text-lg shadow-xl flex items-center justify-center transition-all active:scale-95 group">
+                            <svg id="mic-icon" xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 mr-3" viewBox="0 0 24 24" fill="currentColor"><path d="M12 14c1.66 0 2.99-1.34 2.99-3L15 5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
+                            <span id="mic-status">Sila Bercakap</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Hasil Penilaian -->
+                <div id="results-area" class="hidden glass-card rounded-3xl p-8 shadow-2xl border-t-8 border-indigo-600 mb-10">
+                    <div id="evaluation-content"></div>
+                    <div id="action-buttons" class="mt-8 pt-6 border-t border-slate-200 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <button id="download-btn" onclick="downloadTranscriptFile()" class="w-full bg-slate-800 text-white font-bold py-3 px-4 rounded-xl shadow-lg transition-all active:scale-95 text-sm">Transkrip (.txt)</button>
+                        <button id="download-audio-btn" onclick="downloadAudioFile()" class="w-full bg-emerald-600 text-white font-bold py-3 px-4 rounded-xl shadow-lg transition-all active:scale-95 text-sm">Audio Penuh</button>
+                        <button id="email-student-btn" onclick="window.emailStudentResults()" class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-xl shadow-lg transition-all active:scale-95 text-sm">Hantar E-mel</button>
+                        <button id="pdf-student-btn" onclick="window.generatePDF('student')" class="w-full bg-rose-600 text-white font-bold py-3 px-4 rounded-xl shadow-lg transition-all active:scale-95 text-sm flex items-center justify-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg> Muat Turun PDF</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TEMPLAT PDF (TERSEMBUNYI) -->
+    <div id="pdf-template" class="hidden bg-white p-10 text-slate-800" style="width: 800px; max-width: 800px;">
+        <div class="border-b-4 border-indigo-600 pb-6 mb-6 flex items-center justify-between">
+            <div class="flex items-center space-x-4">
+                <img id="pdf-logo" src="" alt="Logo Sekolah" class="h-20 w-auto object-contain hidden">
+                <div id="pdf-default-logo" class="h-16 w-16 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 hidden">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" /></svg>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-black text-slate-800 uppercase tracking-tight">Laporan Lisan IGCSE</h1>
+                    <p class="text-sm font-bold text-slate-500" id="pdf-date">Tarikh: -</p>
+                </div>
+            </div>
+            <div class="text-right">
+                <div class="bg-indigo-50 border border-indigo-100 p-3 rounded-xl inline-block text-center">
+                    <p class="text-[10px] font-black uppercase text-indigo-600 tracking-widest mb-1">Skor Rasmi</p>
+                    <p class="text-4xl font-black text-indigo-900 leading-none" id="pdf-total-score">0/30</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-6 mb-8">
+            <div>
+                <h3 class="text-xs font-black uppercase text-slate-400 tracking-widest mb-2 border-b pb-1">Maklumat Pelajar</h3>
+                <p class="font-bold text-lg" id="pdf-student-name">Nama Pelajar</p>
+                <p class="text-sm text-slate-600" id="pdf-student-class">Bilik Kelas</p>
+                <p class="text-sm text-slate-600" id="pdf-student-email">E-mel</p>
+            </div>
+            <div>
+                <h3 class="text-xs font-black uppercase text-slate-400 tracking-widest mb-2 border-b pb-1">Butiran Ujian</h3>
+                <p class="text-sm"><span class="font-bold text-slate-600">Topik:</span> <span id="pdf-topic">Topik Ujian</span></p>
+                <p class="text-sm mt-1"><span class="font-bold text-slate-600">Bahasa:</span> <span id="pdf-lang">Bahasa Melayu</span></p>
+            </div>
+        </div>
+
+        <div class="bg-slate-50 border border-slate-200 rounded-2xl p-6 mb-8">
+            <h3 class="text-sm font-black uppercase text-slate-800 tracking-widest mb-4">Pecahan Markah (Rubrik IGCSE)</h3>
+            <div class="grid grid-cols-2 gap-6">
+                <div>
+                    <p class="font-bold text-indigo-600 mb-1 flex justify-between"><span>Komunikasi</span> <span id="pdf-comm-score">0/15</span></p>
+                    <p class="text-xs text-slate-600 leading-relaxed" id="pdf-comm-just">Ulasan komunikasi...</p>
+                </div>
+                <div>
+                    <p class="font-bold text-emerald-600 mb-1 flex justify-between"><span>Kualiti Bahasa</span> <span id="pdf-lang-score">0/15</span></p>
+                    <p class="text-xs text-slate-600 leading-relaxed" id="pdf-lang-just">Ulasan kualiti bahasa...</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="mb-8">
+            <h3 class="text-sm font-black uppercase text-slate-800 tracking-widest mb-2 border-b-2 border-slate-200 pb-2">Maklum Balas / Penambahbaikan (Stretch It)</h3>
+            <p class="text-sm text-slate-700 leading-relaxed bg-amber-50 p-4 rounded-xl border border-amber-100" id="pdf-feedback">Maklum balas diletakkan di sini.</p>
+        </div>
+
+        <div>
+            <h3 class="text-sm font-black uppercase text-slate-800 tracking-widest mb-2 border-b-2 border-slate-200 pb-2">Transkrip Perbualan</h3>
+            <div class="text-xs text-slate-600 whitespace-pre-wrap leading-relaxed font-medium" id="pdf-transcript"></div>
+        </div>
+    </div>
+
+    <!-- PORTAL GURU DASHBOARD -->
+    <div id="admin-dashboard" class="hidden fixed inset-0 bg-[#f8fafc] z-50 overflow-y-auto">
+        <div class="max-w-7xl mx-auto p-6 md:p-10">
+            <div class="flex justify-between items-center mb-8">
+                <div>
+                    <h1 class="text-4xl font-extrabold text-slate-900 tracking-tight">Portal Guru</h1>
+                    <div class="flex items-center space-x-3 mt-2">
+                        <span id="admin-role-badge" class="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">Memeriksa Peranan...</span>
+                        <p id="db-status-text" class="text-xs text-slate-500 font-bold uppercase tracking-widest">Sistem Sedia ⚡</p>
+                    </div>
+                </div>
+                <button onclick="window.closeAdminPortal()" class="bg-white border border-slate-200 text-slate-700 font-bold py-2 px-6 rounded-xl shadow-sm hover:bg-slate-50 active:scale-95 transition-all text-sm">Log Keluar</button>
+            </div>
+
+            <div id="super-admin-nav" class="hidden mb-6 flex space-x-6 border-b border-slate-200">
+                <button id="nav-btn-sessions" onclick="window.switchDashTab('sessions')" class="font-black text-sm uppercase tracking-widest text-indigo-600 border-b-2 border-indigo-600 pb-3 transition-all">Sesi Pelajar</button>
+                <button id="nav-btn-teachers" onclick="window.switchDashTab('teachers')" class="font-bold text-sm uppercase tracking-widest text-slate-400 hover:text-indigo-600 pb-3 transition-all">Pengurusan Sistem</button>
+                <button id="nav-btn-settings" onclick="window.switchDashTab('settings')" class="font-bold text-sm uppercase tracking-widest text-slate-400 hover:text-indigo-600 pb-3 transition-all">Tetapan Sekolah</button>
+            </div>
+
+            <!-- KANDUNGAN: SESI PELAJAR -->
+            <div id="dash-content-sessions">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200"><p class="text-3xl font-black text-slate-800" id="stat-total">0</p><p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Jumlah Sesi</p></div>
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200"><p class="text-3xl font-black text-emerald-600" id="stat-completed">0</p><p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Selesai</p></div>
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200"><p class="text-3xl font-black text-indigo-600" id="stat-avg">-</p><p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Purata Skor</p></div>
+                </div>
+
+                <div id="tab-sessions" class="bg-white rounded-3xl shadow-sm border border-slate-200 p-6">
+                    <div class="flex flex-col md:flex-row justify-between items-center mb-6 space-y-4 md:space-y-0">
+                        <div class="flex items-center space-x-4">
+                            <h3 class="text-lg font-extrabold text-slate-800">Senarai Sesi Terkini</h3>
+                            <select id="filter-year" onchange="window.refreshAdmin()" class="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500 text-slate-600">
+                                <option value="ALL" selected>Semua Tahun</option>
+                                <option value="Year 7">Year 7</option>
+                                <option value="Year 8">Year 8</option>
+                                <option value="Year 9">Year 9</option>
+                                <option value="Year 10">Year 10</option>
+                                <option value="Year 11">Year 11</option>
+                            </select>
+                        </div>
+                        <button onclick="window.refreshAdmin()" class="bg-indigo-50 text-indigo-600 font-bold py-2 px-4 rounded-xl text-xs flex items-center hover:bg-indigo-100 transition-all">Segar Semula</button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="border-b border-slate-200 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                    <th class="pb-3 pr-4">Pelajar</th>
+                                    <th class="pb-3 px-4">Tahun & Kelas</th>
+                                    <th class="pb-3 px-4">Tarikh</th>
+                                    <th class="pb-3 px-4">Skor</th>
+                                    <th class="pb-3 text-right">Tindakan</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-session-list" class="text-sm font-medium text-slate-700"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- KANDUNGAN: PENGURUSAN SISTEM -->
+            <div id="dash-content-teachers" class="hidden">
+                <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-6">
+                    <h3 class="text-lg font-extrabold text-slate-800 mb-6">Senarai Guru Berdaftar</h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="border-b border-slate-200 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                    <th class="pb-3 pr-4">Nama Guru</th>
+                                    <th class="pb-3 px-4">Kod Kelas</th>
+                                    <th class="pb-3 px-4">Kata Laluan Semasa</th>
+                                    <th class="pb-3 text-right">Tindakan</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-teacher-list" class="text-sm font-medium text-slate-700"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- KANDUNGAN: TETAPAN SEKOLAH (BARU) -->
+            <div id="dash-content-settings" class="hidden">
+                <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-8 max-w-2xl mx-auto">
+                    <div class="flex items-center space-x-4 mb-6 border-b border-slate-100 pb-4">
+                        <div class="bg-indigo-100 p-3 rounded-full text-indigo-600">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-extrabold text-slate-800">Logo Laporan Rasmi PDF</h3>
+                            <p class="text-sm text-slate-500">Logo ini akan dipaparkan pada setiap laporan (PDF) yang dijana oleh sistem.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2">URL Gambar Logo (Public Link .png/.jpg)</label>
+                            <input type="url" id="setting-logo-url" placeholder="Cth: https://www.sekolah.edu.my/logo.png" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none transition-all">
+                        </div>
+                        <button onclick="window.saveSystemSettings()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-all active:scale-95 text-sm">Simpan Tetapan</button>
+                        <p id="setting-status" class="text-emerald-600 text-xs font-bold text-center hidden">✅ Tetapan berjaya disimpan!</p>
+                    </div>
+
+                    <div class="mt-8 p-4 bg-slate-50 rounded-xl border border-slate-200 text-center">
+                        <p class="text-xs font-bold text-slate-500 mb-2">Pratonton Logo Semasa:</p>
+                        <img id="setting-logo-preview" src="" alt="Tiada Logo Ditetapkan" class="h-20 w-auto mx-auto object-contain hidden">
+                        <p id="setting-no-logo" class="text-sm text-slate-400 italic">Tiada logo khas. Sistem akan menggunakan logo lalai.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MODAL SEMAKAN & OVERRIDE CIKGU -->
+            <div id="admin-review-modal" class="hidden mt-8 bg-white rounded-3xl shadow-2xl border-t-8 border-indigo-600 p-8 relative">
+                <button onclick="window.closeReviewModal()" class="mb-6 text-sm font-bold text-indigo-600 hover:underline flex items-center">← Kembali ke Senarai</button>
+                <div class="flex justify-between items-start mb-6">
+                    <div>
+                        <div class="flex items-center space-x-2 mb-1">
+                            <h2 class="text-2xl font-black text-slate-800" id="review-student-name">...</h2>
+                            <span id="review-badge-class" class="bg-slate-100 text-slate-600 px-2 py-1 rounded text-[10px] font-black uppercase tracking-widest">...</span>
+                        </div>
+                        <p class="text-slate-500 font-medium text-sm" id="review-topic-name">...</p>
+                    </div>
+                    <div class="bg-indigo-50 text-indigo-700 px-6 py-2 rounded-2xl text-center"><p class="text-[10px] font-black uppercase tracking-widest">Markah Akhir</p><p class="text-3xl font-black" id="review-total-score">-</p></div>
+                </div>
+                
+                <!-- Kawasan Override Markah oleh Cikgu -->
+                <div class="bg-slate-50 border border-slate-200 rounded-2xl p-6 mb-6">
+                    <h4 class="text-xs font-black text-slate-800 uppercase tracking-wider mb-4 border-b pb-2">Penilaian Guru (Boleh Diedit)</h4>
+                    <p class="text-slate-500 text-[11px] mb-4">Sila ubah markah di bawah jika anda tidak bersetuju dengan markah AI. Jumlah keseluruhan akan dikira secara automatik.</p>
+                    
+                    <div class="grid grid-cols-2 gap-4 mb-6">
+                        <div class="bg-white p-4 rounded-xl border border-slate-200 flex flex-col justify-between shadow-sm hover:border-indigo-300 transition-all">
+                            <span class="font-bold text-xs text-indigo-600 mb-2">Komunikasi (/15)</span>
+                            <input type="number" id="review-comm-score" oninput="window.recalcScore()" class="text-2xl font-black bg-slate-50 border border-indigo-100 rounded-lg px-3 py-2 w-full outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800" min="0" max="15">
+                        </div>
+                        <div class="bg-white p-4 rounded-xl border border-slate-200 flex flex-col justify-between shadow-sm hover:border-emerald-300 transition-all">
+                            <span class="font-bold text-xs text-emerald-600 mb-2">Kualiti Bahasa (/15)</span>
+                            <input type="number" id="review-lang-score" oninput="window.recalcScore()" class="text-2xl font-black bg-slate-50 border border-emerald-100 rounded-lg px-3 py-2 w-full outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800" min="0" max="15">
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <button id="request-audio-btn" onclick="window.requestAudio()" class="w-full bg-indigo-600 text-white font-bold py-3 px-8 rounded-xl text-sm hover:bg-indigo-700 active:scale-95 transition-all shadow-md">Simpan & Hantar E-mel</button>
+                        <button onclick="window.generatePDF('admin')" class="w-full bg-rose-600 text-white font-bold py-3 px-8 rounded-xl text-sm hover:bg-rose-700 active:scale-95 transition-all shadow-md flex justify-center items-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg> Muat Turun Laporan PDF</button>
+                    </div>
+                </div>
+                
+                <div id="review-details" class="space-y-6">
+                    <div class="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm">
+                        <h4 class="font-bold text-slate-800 mb-2">Maklum Balas AI (Stretch It)</h4>
+                        <p class="text-sm text-slate-600 leading-relaxed" id="review-feedback">...</p>
+                    </div>
+                    <div class="bg-slate-900 text-white rounded-2xl p-6 overflow-hidden shadow-inner">
+                        <h4 class="text-xs font-black uppercase opacity-50 mb-4 tracking-widest">Transkrip Lengkap</h4>
+                        <div id="review-transcript" class="text-xs font-medium whitespace-pre-wrap leading-relaxed max-h-60 overflow-y-auto pr-2"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <audio id="tts-audio" class="hidden"></audio>
+
+    <script type="module">
+        // --- 0. CONFIG ---
+        const GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbwfMdPUWIsPRoPfAHzfd2vqAJjEi769BRQeaLe14yslcr48aY3oELXjbp7TKoqjH-zy/exec";
+        const apiKey = ""; 
+        const MODEL = "gemini-2.5-flash-preview-09-2025";
+        const MAX_TURNS = 7;
+
+        // --- 1. DOM MAPPING ---
+        const els = {
+            lang: document.getElementById('lang-select'),
+            level: document.getElementById('level-select'),
+            yearGroup: document.getElementById('year-group'),
+            classCode: document.getElementById('class-code'),
+            student: document.getElementById('student-id'),
+            email: document.getElementById('student-email'),
+            task: document.getElementById('task-prompt'),
+            chat: document.getElementById('chat-window'),
+            start: document.getElementById('start-btn'),
+            mic: document.getElementById('mic-btn'),
+            micStatus: document.getElementById('mic-status'),
+            end: document.getElementById('end-assess-btn'),
+            status: document.getElementById('status-text'),
+            indicator: document.getElementById('status-indicator'),
+            results: document.getElementById('results-area'),
+            eval: document.getElementById('evaluation-content'),
+            tts: document.getElementById('tts-audio'),
+            ttsToggle: document.getElementById('tts-toggle'),
+            turnCounter: document.getElementById('turn-counter'),
+            currentTurn: document.getElementById('current-turn'),
+            botAvatar: document.getElementById('main-bot-avatar'),
+            dbStatus: document.getElementById('db-status-text'),
+            voiceArea: document.getElementById('voice-controls')
+        };
+
+        // --- 2. FIREBASE & AUTH SETUP ---
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        let db, useFirebase = false, currentUser = null;
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'igcse-default';
+
+        async function setupFirebase() {
+            try {
+                const config = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+                if (config.apiKey) {
+                    const app = initializeApp(config);
+                    const auth = getAuth(app);
+                    db = getFirestore(app);
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                    } else { await signInAnonymously(auth); }
+                    onAuthStateChanged(auth, u => currentUser = u);
+                    useFirebase = true;
+                    els.dbStatus.textContent = "Status: Cloud Firebase Aktif ☁️";
+                } else throw new Error("No Config");
+            } catch (e) {
+                useFirebase = false;
+                els.dbStatus.textContent = "Status: Local Storage Aktif 💾";
+            }
+        }
+        setupFirebase();
+
+        // --- GLOBAL ADMIN STATE ---
+        window.currentAdminKey = null;
+        window.currentAdminName = null;
+        window.currentReviewId = null;
+        window.lastEvalScore = 0; // Untuk auto-email budak
+        window.systemLogoUrl = localStorage.getItem('igcse_system_logo') || '';
+
+        // --- LOGIK MODAL AUTH (LOGIN & REGISTER) ---
+        window.openAdminPortal = function() {
+            document.getElementById('pin-modal').classList.remove('hidden');
+            document.getElementById('auth-error').classList.add('hidden');
+            document.getElementById('auth-success').classList.add('hidden');
+            window.switchAuthTab('login');
+        };
+        window.closePinModal = function() { document.getElementById('pin-modal').classList.add('hidden'); };
+        
+        window.switchAuthTab = function(tab) {
+            document.getElementById('auth-error').classList.add('hidden');
+            document.getElementById('auth-success').classList.add('hidden');
+            if (tab === 'login') {
+                document.getElementById('form-login').classList.remove('hidden');
+                document.getElementById('form-register').classList.add('hidden');
+                document.getElementById('tab-btn-login').className = "w-1/2 py-2 text-sm font-bold rounded-lg bg-white shadow-sm text-indigo-600 transition-all";
+                document.getElementById('tab-btn-register').className = "w-1/2 py-2 text-sm font-bold rounded-lg text-slate-500 hover:text-slate-700 transition-all";
+            } else {
+                document.getElementById('form-login').classList.add('hidden');
+                document.getElementById('form-register').classList.remove('hidden');
+                document.getElementById('tab-btn-register').className = "w-1/2 py-2 text-sm font-bold rounded-lg bg-white shadow-sm text-indigo-600 transition-all";
+                document.getElementById('tab-btn-login').className = "w-1/2 py-2 text-sm font-bold rounded-lg text-slate-500 hover:text-slate-700 transition-all";
+            }
+        }
+
+        window.processRegister = async function() {
+            const name = document.getElementById('reg-name').value.trim();
+            const pass = document.getElementById('reg-pass').value.trim();
+            const err = document.getElementById('auth-error'); const succ = document.getElementById('auth-success');
+            if (!name || !pass) { err.textContent = "❌ Sila isi Nama dan Kata Laluan."; err.classList.remove('hidden'); return; }
+            err.classList.add('hidden');
+            const randomStr = Math.random().toString(36).substring(2, 6).toUpperCase();
+            const newClassCode = `IGCSE-${randomStr}`;
+            const teacherData = { name: name, classCode: newClassCode, password: pass, createdAt: Date.now() };
+
+            try {
+                if (useFirebase && currentUser) { await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'igcse_teachers'), teacherData); } 
+                else {
+                    const teachers = JSON.parse(localStorage.getItem('igcse_teachers_db') || '[]');
+                    teachers.push({ id: Date.now().toString(), ...teacherData }); localStorage.setItem('igcse_teachers_db', JSON.stringify(teachers));
+                }
+                succ.innerHTML = `✅ Pendaftaran Berjaya!<br>Kod Kelas Anda: <b class="text-indigo-600 text-lg">${newClassCode}</b>`; succ.classList.remove('hidden');
+                document.getElementById('login-code').value = newClassCode; document.getElementById('login-pass').value = pass;
+                setTimeout(() => { window.switchAuthTab('login'); }, 3000);
+            } catch (e) { err.textContent = "❌ Gagal mendaftar guru."; err.classList.remove('hidden'); }
+        };
+
+        window.processLogin = async function() {
+            const code = document.getElementById('login-code').value.trim().toUpperCase(); const pass = document.getElementById('login-pass').value.trim();
+            const err = document.getElementById('auth-error');
+            if (!code || !pass) { err.textContent = "❌ Masukkan Kod Kelas dan Kata Laluan."; err.classList.remove('hidden'); return; }
+            err.classList.add('hidden');
+
+            if (code === "0506" && pass === "0506") { window.currentAdminKey = "0506"; window.currentAdminName = "Super Admin"; proceedToDashboard(); return; }
+
+            let isValid = false;
+            try {
+                if (useFirebase && currentUser) {
+                    const snap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'igcse_teachers'));
+                    snap.forEach(d => { const t = d.data(); if (t.classCode === code && t.password === pass) { isValid = true; window.currentAdminName = t.name; } });
+                } else {
+                    const teachers = JSON.parse(localStorage.getItem('igcse_teachers_db') || '[]');
+                    const found = teachers.find(t => t.classCode === code && t.password === pass); if (found) { isValid = true; window.currentAdminName = found.name; }
+                }
+
+                if (isValid) { window.currentAdminKey = code; proceedToDashboard(); } 
+                else { err.textContent = "❌ Kod Kelas atau Kata Laluan salah."; err.classList.remove('hidden'); }
+            } catch (e) { err.textContent = "❌ Ralat pangkalan data."; err.classList.remove('hidden'); }
+        };
+
+        function proceedToDashboard() {
+            const badge = document.getElementById('admin-role-badge'); const superAdminNav = document.getElementById('super-admin-nav');
+            if (window.currentAdminKey === "0506") {
+                badge.textContent = "Super Admin (Akses Penuh)"; badge.className = "bg-rose-100 text-rose-700 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-rose-200";
+                superAdminNav.classList.remove('hidden'); 
+            } else {
+                badge.textContent = `Guru: ${window.currentAdminName} (${window.currentAdminKey})`; badge.className = "bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-indigo-200";
+                superAdminNav.classList.add('hidden'); window.switchDashTab('sessions');
+            }
+            document.getElementById('pin-modal').classList.add('hidden'); document.getElementById('main-app-content').classList.add('hidden');
+            document.getElementById('admin-dashboard').classList.remove('hidden');
+            window.refreshAdmin(); if (window.currentAdminKey === "0506") window.loadTeachers();
+        }
+
+        window.closeAdminPortal = function() {
+            window.currentAdminKey = null; window.currentAdminName = null;
+            document.getElementById('admin-dashboard').classList.add('hidden'); document.getElementById('main-app-content').classList.remove('hidden');
+            document.getElementById('login-code').value = ''; document.getElementById('login-pass').value = ''; document.getElementById('reg-name').value = ''; document.getElementById('reg-pass').value = '';
+        };
+
+        window.switchDashTab = function(tab) {
+            const tabs = ['sessions', 'teachers', 'settings'];
+            tabs.forEach(t => {
+                const content = document.getElementById(`dash-content-${t}`);
+                const btn = document.getElementById(`nav-btn-${t}`);
+                if (content && btn) {
+                    if (t === tab) {
+                        content.classList.remove('hidden');
+                        btn.className = "font-black text-sm uppercase tracking-widest text-indigo-600 border-b-2 border-indigo-600 pb-3 transition-all";
+                    } else {
+                        content.classList.add('hidden');
+                        btn.className = "font-bold text-sm uppercase tracking-widest text-slate-400 hover:text-indigo-600 pb-3 transition-all";
+                    }
+                }
+            });
+
+            if (tab === 'settings') {
+                document.getElementById('setting-logo-url').value = window.systemLogoUrl;
+                window.updateLogoPreview();
+            }
+        };
+
+        window.updateLogoPreview = function() {
+            const url = document.getElementById('setting-logo-url').value || window.systemLogoUrl;
+            const img = document.getElementById('setting-logo-preview');
+            const noLogo = document.getElementById('setting-no-logo');
+            if(url) { img.src = url; img.classList.remove('hidden'); noLogo.classList.add('hidden'); }
+            else { img.classList.add('hidden'); noLogo.classList.remove('hidden'); }
+        }
+
+        window.saveSystemSettings = function() {
+            const url = document.getElementById('setting-logo-url').value.trim();
+            window.systemLogoUrl = url;
+            localStorage.setItem('igcse_system_logo', url);
+            window.updateLogoPreview();
+            
+            const status = document.getElementById('setting-status');
+            status.classList.remove('hidden');
+            setTimeout(() => status.classList.add('hidden'), 3000);
+        }
+
+        // --- FUNGSI GENERATE PDF (BARU) ---
+        window.generatePDF = async function(source) {
+            let sessionData = {};
+            
+            // Tentukan sumber data (Pelajar baru habis ujian atau Admin tengah semak)
+            if (source === 'student') {
+                sessionData = {
+                    studentId: els.student.value,
+                    email: els.email.value,
+                    yearGroup: els.yearGroup.value,
+                    classCode: els.classCode.value,
+                    topic: els.task.value,
+                    lang: els.lang.value,
+                    score: window.lastEvalScore,
+                    commScore: document.querySelector('#evaluation-content b:contains("Komunikasi")')?.nextSibling?.textContent || "N/A", // Fallback logic
+                    langScore: document.querySelector('#evaluation-content b:contains("Bahasa")')?.nextSibling?.textContent || "N/A",
+                    commJust: "", langJust: "",
+                    feedback: document.querySelector('#evaluation-content b:contains("Stretch It")')?.nextSibling?.textContent || "Teruskan usaha.",
+                    transcript: globalReportData.replace("SKOR AI: " + window.lastEvalScore + "/30\n\n", "")
+                };
+                
+                // Ambil justifikasi jika ada (sedikit hacky untuk DOM scraping dari string student tapi berkesan)
+                try {
+                    const evalHTML = els.eval.innerHTML;
+                    const commMatch = evalHTML.match(/Komunikasi:<\/b>\s*(\d+\/15)<br>([^<]+)/);
+                    if(commMatch) { sessionData.commScore = commMatch[1]; sessionData.commJust = commMatch[2]; }
+                    const langMatch = evalHTML.match(/Bahasa:<\/b>\s*(\d+\/15)<br>([^<]+)/);
+                    if(langMatch) { sessionData.langScore = langMatch[1]; sessionData.langJust = langMatch[2]; }
+                } catch(e){}
+
+            } else if (source === 'admin') {
+                const s = adminList.find(x => x.id === window.currentReviewId);
+                if (!s) return;
+                
+                // Guna nilai yang cikgu dah edit (Override)
+                const commOvr = document.getElementById('review-comm-score').value;
+                const langOvr = document.getElementById('review-lang-score').value;
+                const totalOvr = parseInt(commOvr) + parseInt(langOvr);
+
+                sessionData = {
+                    studentId: s.studentId,
+                    email: s.email,
+                    yearGroup: s.yearGroup || "N/A",
+                    classCode: s.classCode || "N/A",
+                    topic: s.topic,
+                    lang: "Bahasa Melayu", // Default fallback if not saved
+                    score: totalOvr,
+                    commScore: `${commOvr}/15`,
+                    langScore: `${langOvr}/15`,
+                    commJust: s.scores?.communication?.justification || "-",
+                    langJust: s.scores?.qualityOfLanguage?.justification || "-",
+                    feedback: s.improvement,
+                    transcript: s.transcript,
+                    date: new Date(s.createdAt).toLocaleDateString()
+                };
+            }
+
+            // 1. POPULATE TEMPLATE PDF
+            document.getElementById('pdf-date').innerText = `Tarikh: ${sessionData.date || new Date().toLocaleDateString()}`;
+            document.getElementById('pdf-total-score').innerText = `${sessionData.score}/30`;
+            document.getElementById('pdf-student-name').innerText = sessionData.studentId;
+            document.getElementById('pdf-student-class').innerText = `${sessionData.yearGroup} | ${sessionData.classCode}`;
+            document.getElementById('pdf-student-email').innerText = sessionData.email;
+            document.getElementById('pdf-topic').innerText = sessionData.topic;
+            document.getElementById('pdf-lang').innerText = sessionData.lang;
+            document.getElementById('pdf-comm-score').innerText = sessionData.commScore;
+            document.getElementById('pdf-comm-just').innerText = sessionData.commJust;
+            document.getElementById('pdf-lang-score').innerText = sessionData.langScore;
+            document.getElementById('pdf-lang-just').innerText = sessionData.langJust;
+            document.getElementById('pdf-feedback').innerText = sessionData.feedback;
+            document.getElementById('pdf-transcript').innerText = sessionData.transcript;
+
+            // 2. SET LOGO
+            const logoImg = document.getElementById('pdf-logo');
+            const defaultLogo = document.getElementById('pdf-default-logo');
+            if (window.systemLogoUrl) {
+                logoImg.src = window.systemLogoUrl;
+                logoImg.classList.remove('hidden');
+                defaultLogo.classList.add('hidden');
+            } else {
+                logoImg.classList.add('hidden');
+                defaultLogo.classList.remove('hidden');
+            }
+
+            // 3. GENERATE PDF GUNA HTML2PDF
+            const element = document.getElementById('pdf-template');
+            element.classList.remove('hidden'); // Tunjuk sekejap untuk render
+
+            const opt = {
+                margin:       10,
+                filename:     `Laporan_Lisan_IGCSE_${sessionData.studentId.replace(/\s+/g, '_')}.pdf`,
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2, useCORS: true }, // useCORS penting untuk render logo luar
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+
+            // Loading state
+            const btnId = source === 'student' ? 'pdf-student-btn' : 'request-audio-btn'; // Just visual feedback
+            
+            await html2pdf().set(opt).from(element).save();
+            
+            element.classList.add('hidden'); // Sembunyikan balik
+        }
+
+        // --- 3. HELPER FUNCTIONS AI ---
+        async function fetchGemini(urlBuilder, payload) {
+            const maxRetries = 5; const delays = [1000, 2000, 4000, 8000, 16000];
+            for (let attempt = 0; attempt <= maxRetries; attempt++) {
+                try {
+                    const res = await fetch(urlBuilder(apiKey), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                    if (res.ok) return await res.json();
+                    if (res.status === 429 && attempt < maxRetries) { await new Promise(r => setTimeout(r, delays[attempt])); continue; }
+                    throw new Error(`HTTP ${res.status}`);
+                } catch (e) { if (attempt === maxRetries) throw e; await new Promise(r => setTimeout(r, delays[attempt])); }
+            }
+        }
+        function extractJSON(text) { try { const match = text.match(/\{[\s\S]*\}/); return match ? JSON.parse(match[0]) : null; } catch (e) { return null; } }
+        function setStatus(msg, type = 'normal') {
+            els.status.textContent = msg; els.indicator.className = `h-3 w-3 rounded-full ${type === 'error' ? 'bg-rose-500' : type === 'working' ? 'bg-amber-500 animate-pulse' : type === 'speaking' ? 'bg-indigo-500 speaking-pulse' : 'bg-emerald-500'}`;
+        }
+        function pcmToWav(pcm16, sampleRate) {
+            const buffer = new ArrayBuffer(44 + pcm16.length * 2); const view = new DataView(buffer);
+            const writeString = (v, offset, str) => { for (let i = 0; i < str.length; i++) v.setUint8(offset + i, str.charCodeAt(i)); };
+            writeString(view, 0, 'RIFF'); view.setUint32(4, 36 + pcm16.length * 2, true); writeString(view, 8, 'WAVE'); writeString(view, 12, 'fmt '); view.setUint32(16, 16, true);
+            view.setUint16(20, 1, true); view.setUint16(22, 1, true); view.setUint32(24, sampleRate, true); view.setUint32(28, sampleRate * 2, true); view.setUint16(32, 2, true); view.setUint16(34, 16, true);
+            writeString(view, 36, 'data'); view.setUint32(40, pcm16.length * 2, true); for (let i = 0; i < pcm16.length; i++) view.setInt16(44 + i * 2, pcm16[i], true);
+            return new Blob([buffer], { type: 'audio/wav' });
+        }
+
+        // --- 4. CORE CHAT, AUDIO & TIMER LOGIC ---
+        let chatHistory = [], isRecording = false, isSpeaking = false, userTurns = 0;
+        let mediaRecorder, turnAudioChunks = []; let globalReportData = "", prepInterval = null, isPrepTime = false;
+        window.globalStream = null; window.sessionRecorder = null; window.sessionAudioChunks = [];
+        let audioCtx, analyser, micSource, isVoiceDetected = false, checkAudioInterval;
+
+        function startPrepTimer() {
+            if (userTurns >= MAX_TURNS) return;
+            let timeLeft = 30; isPrepTime = true;
+            els.mic.className = "w-full bg-amber-500 hover:bg-amber-600 text-white py-5 rounded-3xl font-extrabold text-lg shadow-xl flex items-center justify-center transition-all active:scale-95 group";
+            els.micStatus.textContent = `Masa Persediaan: ${timeLeft}s (Klik untuk Jawab)`;
+            prepInterval = setInterval(() => {
+                timeLeft--; if (timeLeft <= 0) { clearInterval(prepInterval); endPrepTimer(true); } else { els.micStatus.textContent = `Masa Persediaan: ${timeLeft}s (Klik untuk Jawab)`; }
+            }, 1000);
+        }
+        function endPrepTimer(playBeep = false) {
+            isPrepTime = false; els.mic.className = "w-full bg-emerald-500 hover:bg-emerald-600 text-white py-5 rounded-3xl font-extrabold text-lg shadow-xl flex items-center justify-center transition-all active:scale-95 group"; els.micStatus.textContent = "Sila Bercakap (Tekan Mikrofon)";
+            if (playBeep) { try { const ctx = new (window.AudioContext || window.webkitAudioContext)(); const osc = ctx.createOscillator(); const gain = ctx.createGain(); osc.connect(gain); gain.connect(ctx.destination); osc.frequency.value = 800; gain.gain.value = 0.1; osc.start(); setTimeout(() => { osc.stop(); ctx.close(); }, 300); } catch(e) {} }
+        }
+
+        async function playTTS(text, bypass = false) {
+            if (!bypass && !els.ttsToggle.checked) { if (userTurns < MAX_TURNS) startPrepTimer(); else window.endAndAssess(); return; }
+            isSpeaking = true; setStatus("Tutor Bercakap...", "speaking"); els.botAvatar.classList.add('speaking-pulse');
+            try {
+                const data = await fetchGemini(k => `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${k}`, { contents: [{ parts: [{ text: text.replace(/[*#_`]/g, "") }] }], generationConfig: { responseModalities: ["AUDIO"], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Achird" } } } } });
+                const audioData = data.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+                if (audioData) {
+                    const pcm16 = new Int16Array(Uint8Array.from(atob(audioData), c => c.charCodeAt(0)).buffer);
+                    els.tts.src = URL.createObjectURL(pcmToWav(pcm16, 24000));
+                    els.tts.onended = () => { isSpeaking = false; setStatus("Sedia."); els.botAvatar.classList.remove('speaking-pulse'); if (userTurns >= MAX_TURNS && !bypass) window.endAndAssess(); else if (!bypass) startPrepTimer(); };
+                    await els.tts.play();
+                }
+            } catch (e) { isSpeaking = false; setStatus("Ralat Audio", "error"); if (userTurns >= MAX_TURNS && !bypass) window.endAndAssess(); else if (!bypass) startPrepTimer(); }
+        }
+
+        async function startRecordingTurn() {
+            try {
+                if (!audioCtx) { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); analyser = audioCtx.createAnalyser(); micSource = audioCtx.createMediaStreamSource(window.globalStream); micSource.connect(analyser); analyser.fftSize = 512; }
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                
+                window.turnStartTime = Date.now();
+                let voiceSpikes = 0; 
+                const dataArray = new Uint8Array(analyser.frequencyBinCount);
+                checkAudioInterval = setInterval(() => { 
+                    analyser.getByteFrequencyData(dataArray); 
+                    if ((dataArray.reduce((a, b) => a + b, 0) / dataArray.length) > 20) voiceSpikes++; 
+                }, 100);
+                
+                mediaRecorder = new MediaRecorder(window.globalStream, { mimeType: 'audio/webm' }); turnAudioChunks = []; mediaRecorder.ondataavailable = e => turnAudioChunks.push(e.data);
+                mediaRecorder.onstop = () => { 
+                    clearInterval(checkAudioInterval);
+                    const duration = Date.now() - window.turnStartTime;
+                    
+                    if (duration < 800 || voiceSpikes < 3) { 
+                        setStatus("Suara tidak dikesan. Sila ulang.", "error"); 
+                        els.mic.className = "w-full bg-emerald-500 hover:bg-emerald-600 text-white py-5 rounded-3xl font-extrabold text-lg shadow-xl flex items-center justify-center transition-all group"; 
+                        els.micStatus.textContent = "Sila Bercakap (Tekan Semula)"; 
+                        return; 
+                    }
+                    
+                    setStatus("Menganalisis...", "working"); const reader = new FileReader(); reader.onloadend = () => sendToBot(reader.result.split(',')[1]); reader.readAsDataURL(new Blob(turnAudioChunks, { type: 'audio/webm' }));
+                };
+                mediaRecorder.start(); isRecording = true; 
+                els.mic.className = "w-full bg-rose-500 hover:bg-rose-600 text-white py-5 rounded-3xl font-extrabold text-lg shadow-xl recording-pulse flex items-center justify-center transition-all group"; els.micStatus.textContent = "Merekod... (Klik Berhenti)";
+            } catch (e) { setStatus("Mic Gagal", "error"); }
+        }
+
+        window.toggleRecording = async function() {
+            if (isSpeaking) { els.tts.pause(); isSpeaking = false; els.botAvatar.classList.remove('speaking-pulse'); }
+            if (isPrepTime) { clearInterval(prepInterval); isPrepTime = false; startRecordingTurn(); return; }
+            if (isRecording) { if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop(); isRecording = false; } else startRecordingTurn();
+        }
+
+        async function sendToBot(b64 = null) {
+            addLoading(); if (b64) { userTurns++; els.currentTurn.textContent = userTurns; }
+            
+            let sys = `Anda ialah Penguji Lisan IGCSE Foreign Language ${els.lang.value}. Topik: ${els.task.value}. Tahap: ${els.level.value}. Gunakan bahasa ${els.lang.value}.\n\n` +
+                      `ARAHAN KETAT ANTI-HALUSINASI: Jika audio yang diterima tidak mengandungi perkataan manusia yang jelas, senyap, atau hanya bunyi bising/nafas/statik, ANDA DIHARAMKAN mereka-reka (hallucinate) sebarang teks. Anda WAJIB kembalikan JSON ini dengan tepat: {"transcription": "[Bunyi tidak jelas / Tiada suara]", "reply": "Maaf, saya tidak dapat mendengar suara anda dengan jelas. Boleh sila ulang semula?"}.\n\n` +
+                      `Format output mesti JSON: {"transcription": "...", "reply": "..."}`;
+            
+            // ARAHAN TAMAT LEPAS 7 SOALAN
+            if (userTurns >= MAX_TURNS) {
+                sys += `\n\nAMARAN KETAT: Ini adalah giliran yang terakhir. JANGAN tanya sebarang soalan baru. Hanya nilaikan respons terakhir pelajar secara ringkas, ucapkan terima kasih dengan sopan, dan nyatakan bahawa sesi ujian lisan telah tamat sepenuhnya.`;
+            }
+
+            const contents = chatHistory.slice(-6);
+            contents.push(b64 ? { role: "user", parts: [{ text: "Analisis audio ini dengan ketat." }, { inlineData: { mimeType: "audio/webm", data: b64 } }] } : { role: "user", parts: [{ text: "Sila mulakan." }] });
+            
+            try {
+                const data = await fetchGemini(k => `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${k}`, { contents, systemInstruction: { parts: [{ text: sys }] }, generationConfig: { responseMimeType: "application/json" } });
+                removeLoading(); const json = extractJSON(data.candidates[0].content.parts[0].text);
+                if (b64) { addMsg('user', json.transcription); chatHistory.push({ role: "user", parts: [{ text: json.transcription }] }); }
+                addMsg('bot', json.reply); chatHistory.push({ role: "model", parts: [{ text: json.reply }] });
+                
+                if (userTurns >= 1) els.end.disabled = false;
+                if (userTurns >= MAX_TURNS) { els.mic.classList.add('hidden'); els.end.disabled = true; } else { els.micStatus.textContent = "Memproses..."; }
+                setStatus("Sedia."); await playTTS(json.reply);
+            } catch (e) { setStatus("Ralat API", "error"); removeLoading(); }
+        }
+
+        window.endAndAssess = async function() {
+            if(isSpeaking) { els.tts.pause(); isSpeaking = false; } if(isPrepTime) { clearInterval(prepInterval); isPrepTime = false; }
+            els.mic.classList.add('hidden'); els.end.classList.add('hidden'); els.turnCounter.classList.add('hidden');
+            if (window.sessionRecorder && window.sessionRecorder.state !== 'inactive') { window.sessionRecorder.stop(); if (window.globalStream) window.globalStream.getTracks().forEach(t => t.stop()); }
+            
+            setStatus("Menilai Prestasi...", "working"); addLoading();
+            const transcript = chatHistory.map(h => `${h.role === 'model' ? 'PENGUJI' : 'PELAJAR'}: ${h.parts[0].text}`).join('\n\n');
+            const prompt = `Nilai perbualan ini KETAT mengikut RUBRIK IGCSE Foreign Language Speaking. Hasilkan JSON format: {"scores": {"communication": {"score": 0, "justification": "..."}, "qualityOfLanguage": {"score": 0, "justification": "..."}}, "improvement": "..."}`;
+            
+            try {
+                const data = await fetchGemini(k => `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${k}`, { contents: [{ role: "user", parts: [{ text: `${prompt}\n\nTranskrip:\n${transcript}` }] }], generationConfig: { responseMimeType: "application/json" } });
+                removeLoading(); const evalData = extractJSON(data.candidates[0].content.parts[0].text);
+                const total = evalData.scores.communication.score + evalData.scores.qualityOfLanguage.score;
+                
+                window.lastEvalScore = total; // Simpan untuk butang email student
+
+                const record = { action: "sendResults", studentId: els.student.value, email: els.email.value, topic: els.task.value, yearGroup: els.yearGroup.value, classCode: els.classCode.value.trim().toUpperCase(), score: total, scores: evalData.scores, improvement: evalData.improvement, transcript: transcript, createdAt: Date.now() };
+                
+                if (useFirebase && currentUser) { await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'igcse_evaluations'), record); } 
+                else { const cache = JSON.parse(localStorage.getItem('igcse_admin') || '[]'); cache.unshift({ id: Date.now().toString(), ...record }); localStorage.setItem('igcse_admin', JSON.stringify(cache)); }
+                
+                els.eval.innerHTML = `<div class="bg-indigo-600 text-white p-6 rounded-2xl text-center mb-6"><p class="text-xs font-black uppercase opacity-60">Skor IGCSE AI (Sementara)</p><h4 class="text-5xl font-black">${total}/30</h4></div><div class="space-y-4 text-xs"><div class="bg-slate-50 p-4 border-l-4 border-indigo-500"><b>Komunikasi:</b> ${evalData.scores.communication.score}/15<br>${evalData.scores.communication.justification}</div><div class="bg-slate-50 p-4 border-l-4 border-emerald-500"><b>Bahasa:</b> ${evalData.scores.qualityOfLanguage.score}/15<br>${evalData.scores.qualityOfLanguage.justification}</div></div><div class="mt-6 bg-amber-50 p-4 rounded-xl text-xs"><b>Stretch It:</b> ${evalData.improvement}</div>`;
+                globalReportData = `SKOR AI: ${total}/30\n\n${transcript}`; els.results.classList.remove('hidden'); els.voiceArea.classList.add('hidden');
+                setStatus("Selesai!"); await playTTS("Ujian tamat. Markah anda telah direkodkan.", true);
+            } catch (e) { setStatus("Gagal Menilai", "error"); removeLoading(); }
+        }
+
+        // FUNGSI PELAJAR MENGHANTAR EMEL KEPUTUSAN
+        window.emailStudentResults = async function() {
+            const btn = document.getElementById('email-student-btn');
+            btn.textContent = "Menghantar E-mel..."; btn.disabled = true;
+            
+            const payload = { 
+                action: "sendResults", studentId: els.student.value, email: els.email.value, 
+                topic: els.task.value, score: window.lastEvalScore, transcript: globalReportData 
+            };
+            try {
+                fetch(GOOGLE_SHEET_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(payload) });
+                btn.textContent = "✅ E-mel Dihantar!";
+                btn.classList.replace('bg-blue-600', 'bg-emerald-600');
+            } catch(e) {
+                btn.textContent = "❌ Gagal. Cuba lagi."; btn.disabled = false;
+            }
+        };
+
+        // --- 5. ADMIN LOGIC (CRUD & ISOLATION) ---
+        let adminList = [];
+        window.refreshAdmin = async function() {
+            const tbody = document.getElementById('admin-session-list');
+            tbody.innerHTML = `<tr><td colspan="5" class="py-10 text-center italic opacity-50">Memuatkan data...</td></tr>`;
+            adminList = [];
+            try {
+                if (useFirebase && currentUser) {
+                    const snap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'igcse_evaluations'));
+                    snap.forEach(d => adminList.push({ id: d.id, ...d.data() }));
+                } else { adminList = JSON.parse(localStorage.getItem('igcse_admin') || '[]'); }
+                adminList.sort((a, b) => b.createdAt - a.createdAt);
+                
+                let filteredList = []; const yearFilter = document.getElementById('filter-year').value;
+                adminList.forEach(s => {
+                    let isMatch = false;
+                    if (window.currentAdminKey === "0506") isMatch = true; 
+                    else if (s.classCode === window.currentAdminKey) isMatch = true;
+                    if (isMatch && yearFilter !== "ALL" && s.yearGroup !== yearFilter) isMatch = false;
+                    if (isMatch) filteredList.push(s);
+                });
+
+                tbody.innerHTML = filteredList.length ? "" : `<tr><td colspan="5" class="py-10 text-center opacity-50">Tiada rekod dijumpai.</td></tr>`;
+                
+                filteredList.forEach(s => {
+                    const yearClassStr = `${s.yearGroup || 'N/A'} | ${s.classCode || 'N/A'}`;
+                    tbody.innerHTML += `
+                        <tr class="border-b border-slate-100 hover:bg-slate-50">
+                            <td class="py-4 font-bold text-slate-800">${s.studentId}</td>
+                            <td class="py-4 text-slate-500 text-xs font-bold">${yearClassStr}</td>
+                            <td class="py-4 text-slate-400 text-xs">${new Date(s.createdAt).toLocaleDateString()}</td>
+                            <td class="py-4 font-black">${s.score}/30</td>
+                            <td class="py-4 text-right">
+                                <button onclick="window.viewReview('${s.id}')" class="text-indigo-600 bg-indigo-50 px-4 py-2 rounded-lg text-[10px] font-black hover:bg-indigo-100 uppercase transition-all shadow-sm">Semak Markah</button>
+                            </td>
+                        </tr>`;
+                });
+                
+                document.getElementById('stat-total').textContent = filteredList.length; document.getElementById('stat-completed').textContent = filteredList.length;
+                document.getElementById('stat-avg').textContent = filteredList.length ? Math.round(filteredList.reduce((a, c) => a + c.score, 0) / filteredList.length) : '-';
+            } catch (e) { tbody.innerHTML = `<tr><td colspan="5" class="py-10 text-center text-rose-500 font-bold">Ralat Data.</td></tr>`; }
+        }
+
+        window.loadTeachers = async function() {
+            const tbody = document.getElementById('admin-teacher-list'); tbody.innerHTML = `<tr><td colspan="4" class="py-10 text-center italic opacity-50">Memuatkan data guru...</td></tr>`;
+            try {
+                let teachers = [];
+                if (useFirebase && currentUser) { const snap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'igcse_teachers')); snap.forEach(d => teachers.push({ id: d.id, ...d.data() })); } 
+                else { teachers = JSON.parse(localStorage.getItem('igcse_teachers_db') || '[]'); }
+                
+                tbody.innerHTML = teachers.length ? "" : `<tr><td colspan="4" class="py-10 text-center opacity-50">Tiada guru berdaftar.</td></tr>`;
+                teachers.forEach(t => {
+                    tbody.innerHTML += `<tr class="border-b border-slate-100 hover:bg-slate-50"><td class="py-4 font-bold text-slate-800">${t.name}</td><td class="py-4 text-indigo-600 font-mono font-bold text-sm">${t.classCode}</td><td class="py-4 text-slate-500 font-mono text-xs tracking-widest">${t.password}</td><td class="py-4 text-right flex justify-end space-x-2"><button onclick="window.openPasswordModal('${t.id}', '${t.name}')" class="text-emerald-700 bg-emerald-50 px-3 py-2 rounded-lg text-[10px] font-black hover:bg-emerald-100 uppercase transition-all shadow-sm">Tukar Kata Laluan</button><button onclick="window.deleteTeacher('${t.id}', '${t.name}')" class="text-rose-600 bg-rose-50 px-3 py-2 rounded-lg text-[10px] font-black hover:bg-rose-100 uppercase transition-all shadow-sm">Padam</button></td></tr>`;
+                });
+            } catch (e) { tbody.innerHTML = `<tr><td colspan="4" class="py-10 text-center text-rose-500 font-bold">Ralat Data.</td></tr>`; }
+        };
+
+        window.deleteTeacher = async function(id, name) {
+            if (!confirm(`AMARAN: Adakah anda pasti mahu memadam akaun Cikgu ${name}?`)) return;
+            try {
+                if (useFirebase && currentUser) { await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'igcse_teachers', id)); } 
+                else { let teachers = JSON.parse(localStorage.getItem('igcse_teachers_db') || '[]'); teachers = teachers.filter(t => t.id !== id); localStorage.setItem('igcse_teachers_db', JSON.stringify(teachers)); }
+                window.loadTeachers(); 
+            } catch (e) { alert("Gagal memadam guru."); }
+        };
+
+        window.openPasswordModal = function(id, name) { document.getElementById('password-modal').classList.remove('hidden'); document.getElementById('password-status').classList.add('hidden'); document.getElementById('password-modal-desc').innerText = `Masukkan kata laluan baharu untuk Cikgu ${name}.`; document.getElementById('new-password-input').value = ''; document.getElementById('edit-teacher-id').value = id; };
+        window.closePasswordModal = function() { document.getElementById('password-modal').classList.add('hidden'); };
+        window.saveNewPassword = async function() {
+            const id = document.getElementById('edit-teacher-id').value; const newPass = document.getElementById('new-password-input').value.trim(); const status = document.getElementById('password-status');
+            if (!newPass) return;
+            try {
+                if (useFirebase && currentUser) { await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'igcse_teachers', id), { password: newPass }); } 
+                else { let teachers = JSON.parse(localStorage.getItem('igcse_teachers_db') || '[]'); const index = teachers.findIndex(t => t.id === id); if (index !== -1) { teachers[index].password = newPass; localStorage.setItem('igcse_teachers_db', JSON.stringify(teachers)); } }
+                status.classList.remove('hidden'); setTimeout(() => { window.closePasswordModal(); window.loadTeachers(); }, 1000);
+            } catch (e) { console.error(e); }
+        };
+
+        // UI OVERRIDE MARKAH GURU
+        window.viewReview = function(id) {
+            const s = adminList.find(x => x.id == id); if (!s) return;
+            window.currentReviewId = id; // Set global state
+            document.getElementById('tab-sessions').classList.add('hidden'); document.getElementById('dash-content-sessions').classList.add('hidden');
+            document.getElementById('admin-review-modal').classList.remove('hidden');
+            
+            document.getElementById('review-student-name').textContent = s.studentId; 
+            document.getElementById('review-badge-class').textContent = `${s.yearGroup || ''} - ${s.classCode || ''}`;
+            document.getElementById('review-topic-name').textContent = s.topic; 
+            document.getElementById('review-total-score').textContent = s.score;
+            document.getElementById('review-feedback').textContent = s.improvement; 
+            
+            // Set input values for overriding
+            document.getElementById('review-comm-score').value = s.scores.communication.score;
+            document.getElementById('review-lang-score').value = s.scores.qualityOfLanguage.score;
+            document.getElementById('review-transcript').textContent = s.transcript;
+            
+            // Reset Button state
+            const reqBtn = document.getElementById('request-audio-btn');
+            reqBtn.textContent = "Simpan Markah & Hantar E-mel kepada Pelajar"; reqBtn.disabled = false;
+        };
+
+        window.recalcScore = function() {
+            const comm = parseInt(document.getElementById('review-comm-score').value) || 0;
+            const lang = parseInt(document.getElementById('review-lang-score').value) || 0;
+            document.getElementById('review-total-score').textContent = (comm + lang);
+        };
+
+        window.closeReviewModal = function() {
+            window.currentReviewId = null;
+            document.getElementById('admin-review-modal').classList.add('hidden'); document.getElementById('dash-content-sessions').classList.remove('hidden');
+            document.getElementById('tab-sessions').classList.remove('hidden');
+        };
+
+        // FUNGSI GURU MENYIMPAN OVERRIDE & MENGHANTAR EMEL
+        window.requestAudio = async function() {
+            const btn = document.getElementById('request-audio-btn');
+            btn.textContent = "Menyimpan & Menghantar E-mel..."; btn.disabled = true;
+            
+            const comm = parseInt(document.getElementById('review-comm-score').value) || 0;
+            const lang = parseInt(document.getElementById('review-lang-score').value) || 0;
+            const newTotal = comm + lang;
+            
+            const s = adminList.find(x => x.id === window.currentReviewId);
+            if(!s) return;
+            
+            // Kemas kini memory
+            s.scores.communication.score = comm;
+            s.scores.qualityOfLanguage.score = lang;
+            s.score = newTotal;
+            
+            try {
+                // Kemas kini database (Firebase/Local)
+                if (useFirebase && currentUser) {
+                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'igcse_evaluations', s.id), {
+                        'scores.communication.score': comm,
+                        'scores.qualityOfLanguage.score': lang,
+                        score: newTotal
+                    });
+                } else {
+                    let cache = JSON.parse(localStorage.getItem('igcse_admin') || '[]');
+                    let idx = cache.findIndex(x => x.id === s.id);
+                    if (idx > -1) { cache[idx] = s; localStorage.setItem('igcse_admin', JSON.stringify(cache)); }
+                }
+                
+                // Trigger Webhook (Google Sheets) untuk E-mel
+                const payload = { action: "sendResults", studentId: s.studentId, email: s.email, topic: s.topic, score: newTotal, commScore: comm, langScore: lang, transcript: s.transcript, feedback: s.improvement };
+                fetch(GOOGLE_SHEET_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(payload) });
+                
+                btn.textContent = "✅ Markah Disimpan & E-mel Dihantar!";
+                window.refreshAdmin(); // Update senarai belakang tab tab
+                
+                setTimeout(() => { btn.textContent = "Simpan Markah & Hantar E-mel kepada Pelajar"; btn.disabled = false; }, 4000);
+            } catch(e) {
+                btn.textContent = "❌ Ralat. Sila cuba lagi.";
+                setTimeout(() => { btn.textContent = "Simpan Markah & Hantar E-mel kepada Pelajar"; btn.disabled = false; }, 4000);
+            }
+        };
+
+        // --- 6. UTILS UI CHAT ---
+        function addMsg(r, t) { const b = document.createElement('div'); b.className = `flex w-full ${r === 'user' ? 'justify-end' : 'justify-start'} mb-4 animate-fade-in`; b.innerHTML = `<div class="max-w-[85%]"><div class="${r === 'user' ? 'user-bubble' : 'bot-bubble'} p-4 text-sm font-medium leading-relaxed">${t}</div></div>`; els.chat.appendChild(b); els.chat.scrollTop = els.chat.scrollHeight; }
+        function addLoading() { const b = document.createElement('div'); b.id = 'chat-load'; b.className = "flex justify-start mb-4"; b.innerHTML = `<div class="bot-bubble p-4"><div class="loading-dots"><span></span><span></span><span></span></div></div>`; els.chat.appendChild(b); els.chat.scrollTop = els.chat.scrollHeight; }
+        function removeLoading() { const l = document.getElementById('chat-load'); if (l) l.remove(); }
+        window.startConversation = async function() { if (!els.student.value || !els.task.value || !els.email.value || !els.yearGroup.value || !els.classCode.value) return setStatus("Lengkapkan Tahun, Kod Kelas, ID, E-mel & Topik!", "error"); try { window.globalStream = await navigator.mediaDevices.getUserMedia({ audio: true }); window.sessionRecorder = new MediaRecorder(window.globalStream, { mimeType: 'audio/webm' }); window.sessionAudioChunks = []; window.sessionRecorder.ondataavailable = e => window.sessionAudioChunks.push(e.data); window.sessionRecorder.start(); } catch(e) { return setStatus("Sila benarkan akses mikrofon.", "error"); } chatHistory = []; userTurns = 0; turnAudioChunks = []; els.chat.innerHTML = ''; els.results.classList.add('hidden'); els.start.classList.add('hidden'); els.voiceArea.classList.remove('hidden'); els.end.classList.remove('hidden'); els.turnCounter.classList.remove('hidden'); els.end.disabled = true; els.student.disabled = els.task.disabled = els.email.disabled = els.lang.disabled = els.level.disabled = els.yearGroup.disabled = els.classCode.disabled = true; await sendToBot(); };
+        window.downloadTranscriptFile = function() { const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([globalReportData], { type: "text/plain" })); a.download = `IGCSE_${els.student.value}.txt`; a.click(); };
+        window.downloadAudioFile = function() { const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob(window.sessionAudioChunks, { type: 'audio/webm' })); a.download = `Lisan_${els.student.value}_Penuh.webm`; a.click(); };
+    </script>
+</body>
+</html>
